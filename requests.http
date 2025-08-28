@@ -1,0 +1,38 @@
+### Signup
+POST http://localhost:5000/signup
+Content-Type: application/json
+
+{
+  "name": "Fagun",
+  "email": "fagun@example.com",
+  "password": "12345"
+}
+
+### Login
+POST http://localhost:5000/login
+Content-Type: application/json
+
+{
+  "email": "fagun@example.com",
+  "password": "12345"
+}
+
+### Refresh (paste refreshToken from /login)
+POST http://localhost:5000/token
+Content-Type: application/json
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjI5NDQ1NiwiZXhwIjoxNzU2ODk5MjU2fQ.sjFzmKPvrVvydFGuI-fZUEu2xk3PFeVXrllm9ueMKNY"
+}
+
+### Protected route (paste access token into Authorization)
+GET http://localhost:5000/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjI5NDQ4NywiZXhwIjoxNzU2Mjk1Mzg3fQ.bZRIZA0qkWoVebwwkJ3HF-3Rit63n9gPYcJrWha5vJI
+
+### Logout (invalidate refresh token)
+POST http://localhost:5000/logout
+Content-Type: application/json
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJqb2huQGV4YW1wbGUuY29tIiwiaWF0IjoxNzU2Mjg4NTYwLCJleHAiOjE3NTY4OTMzNjB9.E4OxjN8JpgRsoME1Gc9cma4wcHGL69PO8ICOO7Ieyhw"
+}
