@@ -22,13 +22,12 @@ POST http://localhost:5000/token
 Content-Type: application/json
 
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjI5NDQ1NiwiZXhwIjoxNzU2ODk5MjU2fQ.sjFzmKPvrVvydFGuI-fZUEu2xk3PFeVXrllm9ueMKNY"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjM2ODIyMiwiZXhwIjoxNzU2OTczMDIyfQ.-aFVUjO7v9w4sjUERCHrBWCmBuZbtGu7YCpf0N7qopU"
 }
 
 ### Protected route (paste access token into Authorization)
 GET http://localhost:5000/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjI5NDQ4NywiZXhwIjoxNzU2Mjk1Mzg3fQ.bZRIZA0qkWoVebwwkJ3HF-3Rit63n9gPYcJrWha5vJI
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NywiZW1haWwiOiJmYWd1bkBleGFtcGxlLmNvbSIsImlhdCI6MTc1NjM2ODI0OSwiZXhwIjoxNzU2MzY5MTQ5fQ.klBoRfIAYnAzma21uCgWo32BmcjGQSZyUaQFIqc33Sw
 ### Logout (invalidate refresh token)
 POST http://localhost:5000/logout
 Content-Type: application/json
