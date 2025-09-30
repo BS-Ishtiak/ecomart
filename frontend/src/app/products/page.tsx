@@ -55,7 +55,73 @@ async function authFetchPaginated(
 }
 
 export default function ProductsPage() {
-  const { accessToken, refreshToken, setAccessToken, setLoggedIn } = useAuth();
+  // Modal state for update
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateProduct, setUpdateProduct] = useState<any | null>(null);
+  const [updateName, setUpdateName] = useState("");
+  const [updateDescription, setUpdateDescription] = useState("");
+  const [updatePrice, setUpdatePrice] = useState("");
+
+  // Admin handlers
+  async function handleDelete(id: number) {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`http://localhost:5000/products/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (res.ok) {
+        setProducts(products.filter(p => p.id !== id));
+      } else {
+        setError("Failed to delete product");
+      }
+    } catch {
+      setError("Failed to delete product");
+    }
+  }
+
+  async function handleUpdate(id: number) {
+    const product = products.find(p => p.id === id);
+    if (product) {
+      setUpdateProduct(product);
+      setUpdateName(product.name || "");
+      setUpdateDescription(product.description || "");
+      setUpdatePrice(product.price?.toString() || "");
+      setShowUpdateModal(true);
+    }
+  }
+
+  async function submitUpdate() {
+    if (!accessToken || !updateProduct) return;
+    try {
+      const res = await fetch(`http://localhost:5000/products/${updateProduct.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: updateName,
+          description: updateDescription,
+          price: Number(updatePrice),
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setProducts(products.map(p => p.id === updateProduct.id ? { ...p, ...updated.data } : p));
+        setShowUpdateModal(false);
+        setUpdateProduct(null);
+      } else {
+        setError("Failed to update product");
+      }
+    } catch {
+      setError("Failed to update product");
+    }
+  }
+  const { accessToken, refreshToken, setAccessToken, setLoggedIn, role } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +176,49 @@ export default function ProductsPage() {
 
   return (
     <div className="max-w-3xl mx-auto my-10 bg-white rounded-2xl shadow-lg p-8">
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+            <h3 className="text-xl font-bold mb-4">Update Product</h3>
+            <label className="block mb-2 font-medium">Name</label>
+            <input
+              type="text"
+              value={updateName}
+              onChange={e => setUpdateName(e.target.value)}
+              className="border rounded px-2 py-1 w-full mb-3"
+            />
+            <label className="block mb-2 font-medium">Description</label>
+            <textarea
+              value={updateDescription}
+              onChange={e => setUpdateDescription(e.target.value)}
+              className="border rounded px-2 py-1 w-full mb-3"
+            />
+            <label className="block mb-2 font-medium">Price</label>
+            <input
+              type="number"
+              value={updatePrice}
+              onChange={e => setUpdatePrice(e.target.value)}
+              className="border rounded px-2 py-1 w-full mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded bg-gray-300 text-gray-700 hover:bg-gray-400"
+                onClick={() => { setShowUpdateModal(false); setUpdateProduct(null); }}
+              >Cancel</button>
+              <button
+                className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+                onClick={submitUpdate}
+              >Update</button>
+            </div>
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+              onClick={() => { setShowUpdateModal(false); setUpdateProduct(null); }}
+              title="Close"
+            >×</button>
+          </div>
+        </div>
+      )}
       <h2 className="text-2xl font-bold mb-6 text-gray-900 tracking-wide text-center">Products</h2>
       {/* Search Bar */}
         <div className="mb-6 flex items-center gap-3">
@@ -155,6 +264,7 @@ export default function ProductsPage() {
               <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Name</th>
               <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Description</th>
               <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Price</th>
+              {role === "admin" && <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -163,11 +273,17 @@ export default function ProductsPage() {
                 <td className="py-2 px-2 border-b border-gray-100 max-w-xs truncate" title={p.name}>{p.name}</td>
                 <td className="py-2 px-2 border-b border-gray-100 max-w-md truncate" title={p.description}>{p.description || <span className='italic text-gray-400'>No description</span>}</td>
                 <td className="py-2 px-2 border-b border-gray-100">{typeof p.price !== 'undefined' ? `৳${p.price}` : ''}</td>
+                {role === "admin" && (
+                  <td className="py-2 px-2 border-b border-gray-100">
+                    <button className="mr-2 px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600" onClick={() => handleDelete(p.id)}>Delete</button>
+                    <button className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600" onClick={() => handleUpdate(p.id)}>Update</button>
+                  </td>
+                )}
               </tr>
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={3} className="text-center py-6 text-gray-400">No products found.</td>
+                <td colSpan={role === "admin" ? 4 : 3} className="text-center py-6 text-gray-400">No products found.</td>
               </tr>
             )}
           </tbody>

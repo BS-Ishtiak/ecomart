@@ -1,6 +1,21 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../auth-context";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
+} from "@mui/material";
 
 interface Product {
   id: number;
@@ -78,91 +93,88 @@ const Products1Page: React.FC = () => {
     currentPage * pageSize
   );
 
+
   return (
-    <div className="max-w-3xl mx-auto mt-10 bg-white rounded-2xl shadow-lg p-8">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 tracking-wide text-center">
-        Products <span className="font-normal text-lg text-gray-400">(Client-side Pagination & Search)</span>
-      </h1>
+    <Box maxWidth="md" mx="auto" mt={10} component={Paper} p={4} borderRadius={4} boxShadow={3}>
+      <Typography variant="h4" align="center" gutterBottom fontWeight={700} color="text.primary">
+        Products <Typography component="span" variant="subtitle1" color="text.secondary" fontWeight={400}>(Client-side Pagination & Search)</Typography>
+      </Typography>
       {/* Search Bar */}
-      <div className="mb-6 flex items-center gap-3">
-        <input
-          type="text"
+      <Box mb={4} display="flex" alignItems="center" gap={2}>
+        <TextField
+          label="Search products"
+          variant="outlined"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search products..."
-          className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full max-w-xs"
+          fullWidth
         />
         {search && (
-          <button
-            type="button"
-            className="ml-2 px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
-            onClick={() => setSearch("")}
-          >
-            Clear
-          </button>
+          <Button variant="outlined" color="secondary" onClick={() => setSearch("")}>Clear</Button>
         )}
-      </div>
-      <div className="mb-6 flex items-center gap-3">
-        <label className="font-medium">Page size:</label>
-        <select
+      </Box>
+      <Box mb={4} display="flex" alignItems="center" gap={2}>
+        <Typography fontWeight={500}>Page size:</Typography>
+        <Select
           value={pageSize}
           onChange={e => setPageSize(Number(e.target.value))}
-          className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          size="small"
         >
           {[5, 10, 15, 20].map(size => (
-            <option key={size} value={size}>{size}</option>
+            <MenuItem key={size} value={size}>{size}</MenuItem>
           ))}
-        </select>
-      </div>
-      {loading && <p className="text-blue-600 text-center font-medium">Loading...</p>}
-      {error && <p className="text-red-700 bg-red-100 p-3 rounded-lg text-center font-medium">{error}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full mt-6 border-separate border-spacing-0 bg-gray-50 rounded-xl shadow-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">ID</th>
-              <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Name</th>
-              <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Price</th>
-              <th className="py-3 px-2 font-semibold text-gray-700 border-b-2 border-gray-200 text-left">Description</th>
-            </tr>
-          </thead>
-          <tbody>
+        </Select>
+      </Box>
+      {loading && <Typography color="primary" align="center" fontWeight={500}>Loading...</Typography>}
+      {error && <Typography color="error" bgcolor="#fdd" p={2} borderRadius={2} align="center" fontWeight={500}>{error}</Typography>}
+      <TableContainer component={Paper} sx={{ mt: 3, borderRadius: 2, boxShadow: 1 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell><b>ID</b></TableCell>
+              <TableCell><b>Name</b></TableCell>
+              <TableCell><b>Price</b></TableCell>
+              <TableCell><b>Description</b></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {paginatedProducts.map((product, idx) => (
-              <tr key={product.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 hover:bg-gray-100 transition'}>
-                <td className="py-2 px-2 border-b border-gray-100">{product.id}</td>
-                <td className="py-2 px-2 border-b border-gray-100">{product.name}</td>
-                <td className="py-2 px-2 border-b border-gray-100">৳{product.price}</td>
-                <td className="py-2 px-2 border-b border-gray-100">{product.description || <span className="text-gray-300">—</span>}</td>
-              </tr>
+              <TableRow key={product.id} hover selected={false}>
+                <TableCell>{product.id}</TableCell>
+                <TableCell>{product.name}</TableCell>
+                <TableCell>৳{product.price}</TableCell>
+                <TableCell>{product.description || <Typography color="text.disabled">—</Typography>}</TableCell>
+              </TableRow>
             ))}
             {paginatedProducts.length === 0 && !loading && (
-              <tr>
-                <td colSpan={4} className="text-center py-6 text-gray-400">No products found.</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.disabled' }}>No products found.</TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex items-center justify-center mt-7 gap-4">
-        <button
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Box display="flex" alignItems="center" justifyContent="center" mt={5} gap={2}>
+        <Button
+          variant="contained"
+          color="inherit"
           onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className={`px-5 py-2 rounded-md font-semibold transition-colors border-none focus:outline-none ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'}`}
         >
           Previous
-        </button>
-        <span className="font-medium text-gray-700 text-base">
+        </Button>
+        <Typography fontWeight={500} color="text.secondary">
           Page {currentPage} of {totalPages}
-        </span>
-        <button
+        </Typography>
+        <Button
+          variant="contained"
+          color="inherit"
           onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages}
-          className={`px-5 py-2 rounded-md font-semibold transition-colors border-none focus:outline-none ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'}`}
         >
           Next
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 };
 

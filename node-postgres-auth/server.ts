@@ -58,7 +58,9 @@ function signRefreshToken(payload: { id: number; email: string }) {
 }
 
 // Middleware to verify access token
-function authenticateToken(req: Request, res: Response, next: NextFunction) {
+function authenticateToken(req: Request, res: Response, next: NextFunction) 
+
+{
   const auth = req.header("authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
   if (!token) {
@@ -71,7 +73,8 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
   }
 
   jwt.verify(token, ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
+    if (err) 
+    {
       return res.status(403).json({
         success: false,
         data: null,

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Container,Box, Typography, List, ListItem, Paper } from "@mui/material";
 import { useAuth } from "../auth-context";
 import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
-  username: string;
-  // Add other user fields as needed
+  name: string;
+
 }
 
 export default function UsersPage() {
@@ -78,13 +79,19 @@ export default function UsersPage() {
   if (error) return <div>{error}</div>;
 
   return (
-    <div className="max-w-xl mx-auto my-8">
-      <h2 className="text-2xl font-bold mb-4">Users</h2>
-      <ul className="space-y-2">
+    <Container maxWidth="sm" sx={{ mt: 8 }}>
+      <Typography variant="h4" component="h2" gutterBottom fontWeight="bold">
+        Users
+      </Typography>
+      <List>
         {users.map((user) => (
-          <li key={user.id} className="p-2 bg-gray-100 rounded">{user.username}</li>
+          <ListItem key={user.id} disablePadding>
+            <Paper sx={{ p: 2, width: '100%' }}>
+              {user.name}
+            </Paper>
+          </ListItem>
         ))}
-      </ul>
-    </div>
+      </List>
+    </Container>
   );
 }

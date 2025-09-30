@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../auth-context";
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -58,16 +61,35 @@ async function authFetch
 
 export default function AddProductPage() {
   const { accessToken, refreshToken, setAccessToken, setLoggedIn } = useAuth();
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  // Zod schema for product
+  const productSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    price: z
+      .string()
+      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: "Price must be a positive number",
+      }),
+    description: z.string().min(1, "Description is required"),
+  });
+
+  type ProductForm = z.infer<typeof productSchema>;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    trigger,
+  } = useForm<ProductForm>({
+    resolver: zodResolver(productSchema),
+    mode: "onChange",
+  });
+
+  const [error, setError] = React.useState("");
+  const [success, setSuccess] = React.useState("");
+
+  const onSubmit = async (data: ProductForm) => {
     setError("");
     setSuccess("");
     try {
@@ -76,7 +98,7 @@ export default function AddProductPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, price, description }),
+          body: JSON.stringify(data),
         },
         accessToken,
         refreshToken,
@@ -85,13 +107,9 @@ export default function AddProductPage() {
       );
       if (!res.ok) throw new Error("Failed to add product");
       setSuccess("Product added!");
-      setName("");
-      setPrice("");
-      setDescription("");
+      reset();
     } catch {
       setError("Could not add product");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -100,35 +118,50 @@ export default function AddProductPage() {
       <Typography variant="h5" component="h2" gutterBottom>
         Add Product
       </Typography>
-      <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           label="Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
+          {...register("name")}
+          onChange={async (e) => {
+            register("name").onChange(e);
+            await trigger("name");
+          }}
+          error={!!errors.name}
+          helperText={errors.name?.message}
           required
           variant="outlined"
         />
         <TextField
           label="Price"
           type="number"
-          value={price}
-          onChange={e => setPrice(e.target.value)}
+          {...register("price")}
+          onChange={async (e) => {
+            register("price").onChange(e);
+            await trigger("price");
+          }}
+          error={!!errors.price}
+          helperText={errors.price?.message}
           required
           variant="outlined"
         />
         <TextField
           label="Description"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
+          {...register("description")}
+          onChange={async (e) => {
+            register("description").onChange(e);
+            await trigger("description");
+          }}
+          error={!!errors.description}
+          helperText={errors.description?.message}
           variant="outlined"
         />
         <Button
           type="submit"
-          disabled={loading}
+          disabled={isSubmitting}
           variant="contained"
           color="primary"
         >
-          {loading ? "Adding..." : "Add Product"}
+          {isSubmitting ? "Adding..." : "Add Product"}
         </Button>
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}

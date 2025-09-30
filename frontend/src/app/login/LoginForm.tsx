@@ -14,35 +14,49 @@ export default function LoginForm({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { setLoggedIn, setAccessToken, setRefreshToken } = useAuth();
+  const { setLoggedIn, setAccessToken, setRefreshToken, setRole } = useAuth();
+
+  // Auto-retry wrapper for promises
+  const autoRetry = async (fn: () => Promise<any>, retries = 3, delay = 1000): Promise<any> => {
+    try {
+      return await fn();
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(res => setTimeout(res, delay));
+        return autoRetry(fn, retries - 1, delay);
+      }
+      throw err;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      try {
-        const res = await axios.post(
-          "http://localhost:5000/login",
-          { email, password },
-        );
-        if (res.status === 200 && res.data.accessToken && res.data.refreshToken) {
-          setAccessToken(res.data.accessToken);
-          setRefreshToken(res.data.refreshToken);
-          setLoggedIn(true);
-          onLogin();
+      const res = await autoRetry(() =>
+        axios.post("http://localhost:5000/login", { email, password })
+      );
+      if (res.status === 200 && res.data.accessToken && res.data.refreshToken) {
+        setAccessToken(res.data.accessToken);
+        setRefreshToken(res.data.refreshToken);
+        setLoggedIn(true);
+        if (res.data.data?.role) {
+          setRole(res.data.data.role);
         } else {
-          setError(res.data.errors?.[0] || res.data.message || "Login failed");
+          setRole(null);
         }
-      } catch (err: any) {
-        setError(
-          err.response?.data?.errors?.[0] ||
-            err.response?.data?.message ||
-            "Login failed"
-        );
+        onLogin();
+      } else {
+        setError(res.data.errors?.[0] || res.data.message || "Login failed");
       }
-    } catch (err) {
-      setError("Network error");
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.errors?.[0] ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Network error"
+      );
     } finally {
       setLoading(false);
     }
