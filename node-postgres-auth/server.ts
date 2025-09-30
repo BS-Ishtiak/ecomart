@@ -1,32 +1,30 @@
-import express, { Request, Response, NextFunction } from "express";
-import cors from "cors";
+import express from "express";
+import { corsMiddleware, jsonMiddleware, authenticateToken } from "./middleware";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 import { Pool } from "pg";
+import dotenv from "dotenv";
+dotenv.config();
 
-// CONFIG (edit these or use env vars in real apps)
-const PORT = 5000;
-const ACCESS_TOKEN_SECRET = "CHANGE_ME_access_secret_!@#";
-const REFRESH_TOKEN_SECRET = "CHANGE_ME_refresh_secret_!@#";
-const ACCESS_EXPIRES_IN = "15m";
-const REFRESH_EXPIRES_IN = "7d";
+// CONFIG (now loaded from .env)
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+const ACCESS_TOKEN_SECRET: jwt.Secret = process.env.ACCESS_TOKEN_SECRET || "";
+const REFRESH_TOKEN_SECRET: jwt.Secret = process.env.REFRESH_TOKEN_SECRET || "";
+const ACCESS_EXPIRES_IN = process.env.ACCESS_EXPIRES_IN || "15m";
+const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || "7d";
 
 const app = express();
-app.use(express.json());
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  })
-);
+app.use(jsonMiddleware);
+app.use(corsMiddleware);
 
 // POSTGRES
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "authdb",
-  password: "1234",
-  port: 5432,
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
 });
 
 // Optional: verify DB connection on boot
@@ -51,41 +49,15 @@ const refreshStore = new Set<string>();
 
 // JWT helpers
 function signAccessToken(payload: { id: number; email: string; name?: string }) {
-  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_EXPIRES_IN });
+  const options: SignOptions = { expiresIn: ACCESS_EXPIRES_IN as SignOptions["expiresIn"] };
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, options);
 }
 function signRefreshToken(payload: { id: number; email: string }) {
-  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_EXPIRES_IN });
+  const options: SignOptions = { expiresIn: REFRESH_EXPIRES_IN as SignOptions["expiresIn"] };
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, options);
 }
 
-// Middleware to verify access token
-function authenticateToken(req: Request, res: Response, next: NextFunction) 
-
-{
-  const auth = req.header("authorization");
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["Access token required"],
-    });
-  }
-
-  jwt.verify(token, ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) 
-    {
-      return res.status(403).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: ["Invalid or expired access token"],
-      });
-    }
-    req.user = decoded as any;
-    next();
-  });
-}
+// ...existing code...
 
 // ===== Password validation function =====
 function isValidPassword(password: string): boolean {
