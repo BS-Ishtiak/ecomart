@@ -1,5 +1,7 @@
+
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 
 interface AuthContextType {
@@ -12,12 +14,16 @@ interface AuthContextType {
   setAccessToken: (token: string | null) => void;
   refreshToken: string | null;
   setRefreshToken: (token: string | null) => void;
+  role: string | null;
+  setRole: (role: string | null) => void;
 }
 
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [loggedIn, setLoggedIn] = useState(() => {
     if (typeof window !== "undefined") {
       return !!localStorage.getItem("accessToken");
@@ -37,6 +43,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return null;
   });
+  const [role, setRoleState] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("role");
+    }
+    return null;
+  });
+  const setRole = (role: string | null) => {
+    setRoleState(role);
+    if (typeof window !== "undefined") {
+      if (role) localStorage.setItem("role", role);
+      else localStorage.removeItem("role");
+    }
+  };
 
   const setAccessToken = (token: string | null) => {
     setAccessTokenState(token);
@@ -57,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoggedIn(false);
     setAccessToken(null);
     setRefreshToken(null);
+    setRole(null);
     // Optionally, call backend to invalidate refresh token
     try {
       const token = localStorage.getItem("refreshToken");
@@ -68,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch {}
+    router.push("/login");
   };
 
   return (
@@ -81,6 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken,
       refreshToken,
       setRefreshToken,
+      role,
+      setRole,
     }}>
       {children}
     </AuthContext.Provider>
