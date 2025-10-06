@@ -292,38 +292,7 @@ export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshT
 
   
 
-  // // Protected route
-  // router.get("/me", authenticateToken, async (req: Request, res: Response) => {
-  //   try {
-  //     const userId = req.user!.id;
-  //     const result = await pool.query("SELECT id, name, email FROM users WHERE id=$1", [userId]);
-  //     const user = result.rows[0];
-  //     if (!user) {
-  //       return res.status(404).json({
-  //         success: false,
-  //         data: null,
-  //         message: null,
-  //         errors: ["User not found"],
-  //       });
-  //     }
-
-  //     return res.json({
-  //       success: true,
-  //       data: user,
-  //       message: "User info retrieved successfully",
-  //       errors: null,
-  //     });
-  //   } catch (err: any) {
-  //     return res.status(500).json({
-  //       success: false,
-  //       data: null,
-  //       message: null,
-  //       errors: [err.message || "Internal server error"],
-  //     });
-  //   }
-  // });
-
-    // Protected route
+  // Protected route
   router.get("/me", authenticateToken, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
@@ -353,6 +322,8 @@ export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshT
       });
     }
   });
+
+  
 
 
   // Protected route to get all users
