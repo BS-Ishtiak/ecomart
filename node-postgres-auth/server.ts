@@ -27,6 +27,37 @@ const pool = new Pool({
   port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
 });
 
+// --- Audit DB Integration ---
+const auditDbPool = new Pool({
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.AUDIT_DB || 'audit_db',
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432,
+});
+
+export async function logErrorToAuditDb(error_message: string, error_stack?: string) {
+  try {
+    await auditDbPool.query(
+      'INSERT INTO errors (error_message, error_stack) VALUES ($1, $2)',
+      [error_message, error_stack || null]
+    );
+  } catch (err) {
+    console.error('Failed to log error to audit_db:', err);
+  }
+}
+
+export async function logUpdateToAuditDb(admin_id: number, action_type: string, target_table: string, target_id: number, details?: string) {
+  try {
+    await auditDbPool.query(
+      'INSERT INTO updates (admin_id, action_type, target_table, target_id, details) VALUES ($1, $2, $3, $4, $5)',
+      [admin_id, action_type, target_table, target_id, details || null]
+    );
+  } catch (err) {
+    console.error('Failed to log update to audit_db:', err);
+  }
+}
+
 // Optional: verify DB connection on boot
 pool
   .query("SELECT 1")
@@ -80,6 +111,8 @@ app.use(
     isValidPassword,
     jwt,
     bcrypt,
+    logErrorToAuditDb,
+    logUpdateToAuditDb,
   })
 );
 
