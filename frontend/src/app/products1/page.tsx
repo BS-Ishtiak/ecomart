@@ -31,7 +31,13 @@ const Products1Page: React.FC = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem("pageSize");
+      return saved ? Number(saved) : 5;
+    }
+    return 5;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accessToken } = useAuth();
@@ -85,6 +91,9 @@ const Products1Page: React.FC = () => {
   // Reset to page 1 if pageSize changes
   useEffect(() => {
     setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("pageSize", String(pageSize));
+    }
   }, [pageSize]);
 
   const totalPages = Math.ceil(filteredProducts.length / pageSize);

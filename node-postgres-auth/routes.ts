@@ -21,9 +21,11 @@ type RouteDeps = {
   isValidPassword: (password: string) => boolean;
   jwt: typeof jwt;
   bcrypt: typeof bcrypt;
+  logErrorToAuditDb: (error_message: string, error_stack?: string) => Promise<void>;
+  logUpdateToAuditDb: (admin_id: number, action_type: string, target_table: string, target_id: number, details?: string) => Promise<void>;
 };
 
-export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshToken, authenticateToken, isValidPassword, jwt, bcrypt }: RouteDeps) {
+export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshToken, authenticateToken, isValidPassword, jwt, bcrypt, logErrorToAuditDb, logUpdateToAuditDb }: RouteDeps) {
   const router = Router();
 
   
@@ -175,12 +177,15 @@ export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshT
         return res.status(403).json({ error: "Admin access required" });
       }
       await pool.query("DELETE FROM products WHERE id = $1", [productId]);
+        // Log admin delete action
+        await logUpdateToAuditDb(req.user.id, 'delete', 'products', parseInt(productId), 'Product deleted');
       return res.json({
         success: true,
         message: "Product deleted successfully.",
         errors: null,
       });
     } catch (err: any) {
+        await logErrorToAuditDb(err.message, err.stack);
       return res.status(500).json({
         success: false,
         message: null,
@@ -201,12 +206,15 @@ export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshT
         "UPDATE products SET name = $1, price = $2, description = $3 WHERE id = $4",
         [name, price, description, productId]
       );
+        // Log admin update action
+        await logUpdateToAuditDb(req.user.id, 'update', 'products', parseInt(productId), `Product updated: name=${name}, price=${price}, description=${description}`);
       return res.json({
         success: true,
         message: "Product updated successfully.",
         errors: null,
       });
     } catch (err: any) {
+        await logErrorToAuditDb(err.message, err.stack);
       return res.status(500).json({
         success: false,
         message: null,
@@ -275,14 +283,47 @@ export function createRoutes({ pool, refreshStore, signAccessToken, signRefreshT
     });
   });
 
-  // Logout
+  
   router.post("/logout", (req: Request<{}, {}, TokenBody>, res: Response) => {
     const { token } = req.body;
     if (token) refreshStore.delete(token);
     return res.status(204).send();
   });
 
-  // Protected route
+  
+
+  // // Protected route
+  // router.get("/me", authenticateToken, async (req: Request, res: Response) => {
+  //   try {
+  //     const userId = req.user!.id;
+  //     const result = await pool.query("SELECT id, name, email FROM users WHERE id=$1", [userId]);
+  //     const user = result.rows[0];
+  //     if (!user) {
+  //       return res.status(404).json({
+  //         success: false,
+  //         data: null,
+  //         message: null,
+  //         errors: ["User not found"],
+  //       });
+  //     }
+
+  //     return res.json({
+  //       success: true,
+  //       data: user,
+  //       message: "User info retrieved successfully",
+  //       errors: null,
+  //     });
+  //   } catch (err: any) {
+  //     return res.status(500).json({
+  //       success: false,
+  //       data: null,
+  //       message: null,
+  //       errors: [err.message || "Internal server error"],
+  //     });
+  //   }
+  // });
+
+    // Protected route
   router.get("/me", authenticateToken, async (req: Request, res: Response) => {
     try {
       const userId = req.user!.id;
