@@ -3,6 +3,15 @@ import bcrypt from 'bcryptjs';
 import type { Pool } from "pg";
 import type jwt from "jsonwebtoken";
 import { logErrorToAuditDb, logUpdateToAuditDb } from '../server';
+import {
+  successResponse,
+  handleDatabaseError,
+  handleServerError,
+  handleValidationError,
+  handleUnauthorizedError,
+  handleForbiddenError,
+  handleNotFoundError,
+} from '../errorHandler/errorHandler';
 
 interface SignupBody {
   name: string;
@@ -34,23 +43,13 @@ const getProducts = (_req: Request, res: Response) =>
 const createUsers = (pool: Pool) => async (req: Request<{}, {}, SignupBody & { role?: string }>, res: Response) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["name, email, password are required"],
-    });
+    return handleValidationError(["name, email, password are required"], res);
   }
 
   if (!isValidPassword(password)) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [
-        "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character",
-      ],
-    });
+    return handleValidationError([
+      "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character",
+    ], res);
   }
 
   const hashed = await bcrypt.hash(password, 10);
@@ -61,28 +60,9 @@ const createUsers = (pool: Pool) => async (req: Request<{}, {}, SignupBody & { r
       hashed,
       role || 'user',
     ]);
-    return res.status(201).json({
-      success: true,
-      data: null,
-      message: "User registered successfully!",
-      errors: null,
-    });
+    return successResponse(res, 201, null, "User registered successfully!");
   } catch (err: any) {
-    if (err?.code === "23505") {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: ["Email already exists!"],
-      });
-    }
-    console.error("Signup error:", err?.message || err);
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["Server error"],
-    });
+    return handleDatabaseError(err, res);
   }
 };
 
@@ -96,17 +76,9 @@ const createAdminUser = (pool: Pool) => async (_req: Request, res: Response) => 
       "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
       ["Admin", adminEmail, hashed, "admin"]
     );
-    return res.json({
-      success: true,
-      message: "Admin user seeded.",
-      errors: null,
-    });
+    return successResponse(res, 200, null, "Admin user seeded.");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -119,33 +91,18 @@ const authorizeUser = (
 ) => async (req: Request<{}, {}, LoginBody>, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["email and password are required"],
-    });
+    return handleValidationError(["email and password are required"], res);
   }
 
   const result = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
   if (result.rows.length === 0) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["User not found!"],
-    });
+    return handleValidationError(["User not found!"], res);
   }
 
   const user = result.rows[0] as { id: number; name: string; email: string; password: string; role: string };
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["Invalid password!"],
-    });
+    return handleValidationError(["Invalid password!"], res);
   }
 
   const accessToken = signAccessToken({ id: user.id, email: user.email, name: user.name, role: user.role });
@@ -168,22 +125,14 @@ const deleteProduct = (pool: Pool) => async (req: Request, res: Response) => {
     const productId = req.params.id;
     // @ts-ignore: custom user property injected by authenticateToken
     if (!req.user || req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+      return handleForbiddenError(res, "Admin access required");
     }
     await pool.query("DELETE FROM products WHERE id = $1", [productId]);
     await logUpdateToAuditDb(req.user.id, 'delete', 'products', parseInt(productId), 'Product deleted');
-    return res.json({
-      success: true,
-      message: "Product deleted successfully.",
-      errors: null,
-    });
+    return successResponse(res, 200, null, "Product deleted successfully.");
   } catch (err: any) {
     await logErrorToAuditDb(err.message, err.stack);
-    return res.status(500).json({
-      success: false,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -193,7 +142,7 @@ const updateProduct = (pool: Pool) => async (req: Request, res: Response) => {
     const productId = req.params.id;
     // @ts-ignore: custom user property injected by authenticateToken
     if (!req.user || req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+      return handleForbiddenError(res, "Admin access required");
     }
     const { name, price, description } = req.body;
     await pool.query(
@@ -201,18 +150,10 @@ const updateProduct = (pool: Pool) => async (req: Request, res: Response) => {
       [name, price, description, productId]
     );
     await logUpdateToAuditDb(req.user.id, 'update', 'products', parseInt(productId), `Product updated: name=${name}, price=${price}, description=${description}`);
-    return res.json({
-      success: true,
-      message: "Product updated successfully.",
-      errors: null,
-    });
+    return successResponse(res, 200, null, "Product updated successfully.");
   } catch (err: any) {
     await logErrorToAuditDb(err.message, err.stack);
-    return res.status(500).json({
-      success: false,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -224,33 +165,18 @@ const refreshTokenHandler = (
 ) => async (req: Request<{}, {}, TokenBody>, res: Response) => {
   const { token } = req.body;
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: ["Missing refresh token"],
-    });
+    return handleUnauthorizedError(res, "Missing refresh token");
   }
 
   jwtLib.verify(token, process.env.REFRESH_TOKEN_SECRET || "CHANGE_ME_refresh_secret_!@#", async (err, decoded) => {
     if (err) {
-      return res.status(403).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: ["Invalid or expired refresh token"],
-      });
+      return handleUnauthorizedError(res, "Invalid or expired refresh token");
     }
     const payload = decoded as { id: number; email: string };
     try {
       const result = await pool.query("SELECT role, name FROM users WHERE id=$1", [payload.id]);
       if (result.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          data: null,
-          message: null,
-          errors: ["User not found"],
-        });
+        return handleNotFoundError(res, "User not found");
       }
       const { role, name } = result.rows[0];
       const newAccess = signAccessToken({ id: payload.id, email: payload.email, name, role });
@@ -261,12 +187,7 @@ const refreshTokenHandler = (
         errors: null,
       });
     } catch (err: any) {
-      return res.status(500).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: [err.message || "Internal server error"],
-      });
+      return handleServerError(err, res);
     }
   });
 };
@@ -285,27 +206,12 @@ const meHandler = (pool: Pool) => async (req: Request, res: Response) => {
     const result = await pool.query("SELECT id, name, email FROM users WHERE id=$1", [userId]);
     const user = result.rows[0];
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: ["User not found"],
-      });
+      return handleNotFoundError(res, "User not found");
     }
 
-    return res.json({
-      success: true,
-      data: user,
-      message: "User info retrieved successfully",
-      errors: null,
-    });
+    return successResponse(res, 200, user, "User info retrieved successfully");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -313,19 +219,9 @@ const meHandler = (pool: Pool) => async (req: Request, res: Response) => {
 const getAllUsersHandler = (pool: Pool) => async (_req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT id, name, email FROM users");
-    return res.json({
-      success: true,
-      message: "All users retrieved successfully.",
-      data: result.rows,
-      errors: null
-    });
+    return successResponse(res, 200, result.rows, "All users retrieved successfully.");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -356,27 +252,17 @@ const getPaginatedProductsHandler = (pool: Pool) => async (req: Request, res: Re
     const dataParams = [...params, offset, pageSize];
     const dataResult = await pool.query(dataQuery, dataParams);
 
-    return res.json({
-      success: true,
-      message: "Products retrieved successfully.",
-      data: {
-        data: dataResult.rows,
-        currentPage: pageNumber,
-        totalPages,
-        totalCount,
-        pageSize,
-        hasPreviousPage: pageNumber > 1,
-        hasNextPage: pageNumber < totalPages
-      },
-      errors: null
-    });
+    return successResponse(res, 200, {
+      data: dataResult.rows,
+      currentPage: pageNumber,
+      totalPages,
+      totalCount,
+      pageSize,
+      hasPreviousPage: pageNumber > 1,
+      hasNextPage: pageNumber < totalPages
+    }, "Products retrieved successfully.");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -384,19 +270,9 @@ const getPaginatedProductsHandler = (pool: Pool) => async (req: Request, res: Re
 const getAllProductsHandler = (pool: Pool) => async (_req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM products LIMIT 1000");
-    return res.json({
-      success: true,
-      message: "All products retrieved successfully.",
-      data: result.rows,
-      errors: null
-    });
+    return successResponse(res, 200, result.rows, "All products retrieved successfully.");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
@@ -405,30 +281,15 @@ const addProductHandler = (pool: Pool) => async (req: Request, res: Response) =>
   try {
     const { name, price, description } = req.body;
     if (!name || !price) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: null,
-        errors: ["Product name and price are required"],
-      });
+      return handleValidationError(["Product name and price are required"], res);
     }
     await pool.query(
       "INSERT INTO products (name, price, description) VALUES ($1, $2, $3)",
       [name, price, description || null]
     );
-    return res.json({
-      success: true,
-      data: null,
-      message: "Product added successfully",
-      errors: null,
-    });
+    return successResponse(res, 200, null, "Product added successfully");
   } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message: null,
-      errors: [err.message || "Internal server error"],
-    });
+    return handleServerError(err, res);
   }
 };
 
