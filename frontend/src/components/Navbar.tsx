@@ -1,6 +1,6 @@
 
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
@@ -10,6 +10,11 @@ import { useAuth } from "../app/auth-context";
 
 export default function Navbar() {
   const { loggedIn, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const publicLinks = [
     // { href: "/", label: "Home" },
@@ -25,7 +30,7 @@ export default function Navbar() {
     { href: "/add-product", label: "Add Product" },
   ];
 
-  const links = loggedIn ? privateLinks : publicLinks;
+  const links = mounted && loggedIn ? privateLinks : publicLinks;
 
   return (
     <AppBar position="sticky" color="default" elevation={1} sx={{ mb: 4 }}>

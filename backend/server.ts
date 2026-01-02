@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
 import { Pool } from "pg";
 import dotenv from "dotenv";
+import { createRoutes } from "./routes/routes";
 dotenv.config();
 
 // CONFIG (now loaded from .env)
@@ -98,7 +99,7 @@ function isValidPassword(password: string): boolean {
 }
 
 
-import { createRoutes } from "./routes";
+
 
 app.use(
   "/",
